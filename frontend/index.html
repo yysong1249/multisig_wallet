@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-sig Wallet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar:   #ffffff;
+      --gold:      #4F7AE8;
+      --gold-lt:   #7B9EF0;
+      --gold-dim:  #3B6CD4;
+      --bg:        #F3F4F6;
+      --card-dark: #4F7AE8;
+      --white:     #ffffff;
+      --border:    #E5E7EB;
+      --text:      #111827;
+      --muted:     #6B7280;
+      --green:     #10B981;
+      --red:       #EF4444;
+      --radius:    14px;
+    }
+
+    body { font-family: 'Inter', 'Noto Sans KR', sans-serif; background: var(--bg); min-height: 100vh; }
+
+    /* ════════════════════════════════════════
+       HOME SCREEN
+    ════════════════════════════════════════ */
+    #homeScreen {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(150deg, #F3F4F6 0%, #E5E7EB 100%);
+    }
+
+    .home-box {
+      background: var(--white);
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    .home-logo-icon {
+      width: 64px; height: 64px;
+      background: var(--card-dark);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 18px;
+    }
+
+    .home-box h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+    .home-box > p { font-size: 0.875rem; color: var(--muted); margin-top: 6px; margin-bottom: 32px; }
+
+    .home-connect-btn {
+      width: 100%;
+      background: var(--card-dark);
+      color: #ffffff;
+      border: none; border-radius: 12px;
+      padding: 15px;
+      font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s;
+    }
+    .home-connect-btn:hover { background: #3B6CD4; }
+    .home-connect-btn.connected { background: #059669; color: #fff; cursor: default; }
+
+    #homeContractSection { display: none; flex-direction: column; gap: 10px; margin-top: 12px; }
+    #homeContractSection.show { display: flex; }
+
+    .home-badge {
+      background: var(--bg); border-radius: 8px;
+      padding: 10px 14px; font-size: 0.78rem;
+      color: var(--muted); font-family: monospace; word-break: break-all;
+      text-align: left;
+    }
+
+    .home-input {
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+      font-size: 0.875rem; font-family: inherit; color: var(--text);
+      outline: none; transition: border-color 0.2s; width: 100%;
+    }
+    .home-input:focus { border-color: var(--gold); }
+    .home-input::placeholder { color: #9CA3AF; }
+
+    .home-load-btn {
+      width: 100%;
+      background: var(--gold); color: #ffffff;
+      border: none; border-radius: 12px;
+      padding: 15px; font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: background 0.2s;
+    }
+    .home-load-btn:hover { background: var(--gold-lt); }
+
+    /* ════════════════════════════════════════
+       DASHBOARD SCREEN
+    ════════════════════════════════════════ */
+    #dashScreen { display: none; min-height: 100vh; }
+
+    .app-layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      position: fixed; top: 0; left: 0; bottom: 0;
+      display: flex; flex-direction: column;
+      padding: 24px 14px;
+    }
+
+    .sb-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 8px; margin-bottom: 40px;
+    }
+    .sb-logo-icon {
+      width: 40px; height: 40px;
+      background: var(--gold); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .sb-logo-text { line-height: 1.25; }
+    .sb-logo-text b { display: block; font-size: 0.95rem; color: var(--text); font-weight: 700; }
+    .sb-logo-text span { font-size: 0.72rem; color: var(--muted); }
+
+    .sb-nav { display: flex; flex-direction: column; gap: 4px; }
+
+    .nav-btn {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 11px 14px;
+      background: none; border: none; border-radius: 10px;
+      font-size: 0.875rem; font-weight: 500; font-family: inherit;
+      color: var(--muted); cursor: pointer;
+      transition: all 0.18s; text-align: left;
+    }
+    .nav-btn:hover { color: var(--text); background: rgba(0,0,0,0.05); }
+    .nav-btn.active { background: #EEF2FF; color: var(--gold); font-weight: 700; }
+    .nav-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+    /* ── App body ── */
+    .app-body { margin-left: 240px; flex: 1; display: flex; flex-direction: column; }
+
+    /* Topbar */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 28px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar-title { font-size: 1.4rem; font-weight: 700; color: var(--text); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+    .account-pill {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 999px; padding: 8px 16px;
+      font-size: 0.82rem; font-weight: 500; color: var(--text);
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .account-pill:hover { border-color: var(--gold); }
+
+    .net-badge {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 999px; padding: 8px 16px;
+      font-size: 0.82rem; font-weight: 500; color: var(--text);
+    }
+    .net-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; }
+
+    /* Content */
+    .content-area { display: flex; flex: 1; }
+
+    .page-content { flex: 1; padding: 28px; overflow-y: auto; }
+
+    /* Right panel */
+    .right-panel {
+      width: 272px; flex-shrink: 0;
+      background: var(--white);
+      border-left: 1px solid var(--border);
+      padding: 24px 20px;
+    }
+    .right-panel h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 16px; }
+
+    .act-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .act-item:last-child { border-bottom: none; }
+    .act-name { font-weight: 500; color: var(--text); }
+    .act-status { font-weight: 700; font-size: 0.75rem; }
+    .act-status.Pending   { color: #2563EB; }
+    .act-status.Executed  { color: var(--green); }
+    .act-status.Confirmed { color: var(--green); }
+    .act-status.Revoked   { color: var(--red); }
+    .act-empty { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 24px 0; }
+
+    /* ════════════════════════════════════════
+       DASHBOARD PAGE
+    ════════════════════════════════════════ */
+    .overview-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .ov-label { font-size: 0.82rem; font-weight: 500; color: var(--muted); margin-bottom: 14px; }
+    .ov-balance { font-size: 3rem; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 28px; }
+    .ov-balance small { font-size: 1.4rem; margin-left: 6px; }
+    .ov-btns { display: flex; gap: 12px; }
+    .ov-btn {
+      flex: 1; padding: 14px;
+      background: var(--gold); color: #ffffff;
+      border: none; border-radius: 10px;
+      font-size: 0.9rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .ov-btn:hover { background: var(--gold-lt); transform: translateY(-1px); }
+
+    .stat-row { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .stat-lbl { font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
+    .stat-val { font-size: 1.9rem; font-weight: 700; color: var(--text); line-height: 1; }
+
+    /* ════════════════════════════════════════
+       TRANSACTIONS PAGE
+    ════════════════════════════════════════ */
+    .ph { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .ph h3 { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .ph-btn {
+      background: var(--card-dark); color: #ffffff;
+      border: none; border-radius: 10px;
+      padding: 10px 20px; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: background 0.2s;
+    }
+    .ph-btn:hover { background: var(--gold-dim); }
+
+    .tx-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+      margin-bottom: 10px; transition: box-shadow 0.2s;
+    }
+    .tx-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .tx-card.done      { border-color: #b8ddb0; background: #f4fbf3; }
+    .tx-card.cancelled { border-color: #f0c0b0; background: #fdf4f3; }
+
+    .tx-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .tx-id-lbl { font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+    .tx-badge { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+    .tx-badge.pending   { background: #DBEAFE; color: #2563EB; }
+    .tx-badge.executed  { background: #e0f5e0; color: #16a34a; }
+    .tx-badge.cancelled { background: #fde8e8; color: #d05040; }
+
+    .tx-mid { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+    .tx-to-lbl { font-size: 0.72rem; color: var(--muted); margin-bottom: 2px; }
+    .tx-to { font-family: monospace; font-size: 0.82rem; color: var(--text); }
+    .tx-amt { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+
+    .tx-signers-info {
+      font-size: 0.75rem; color: var(--muted);
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      background: var(--bg); border-radius: 6px;
+    }
+
+    .tx-prog-labels { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); margin-bottom: 5px; }
+    .tx-prog-bar { height: 5px; background: #E5E7EB; border-radius: 999px; overflow: hidden; margin-bottom: 14px; }
+    .tx-prog-fill { height: 100%; border-radius: 999px; transition: width 0.4s; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); }
+    .tx-prog-fill.done { background: linear-gradient(90deg, #22a65a, #16a34a); }
+
+    .tx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ta-btn {
+      padding: 7px 16px; border-radius: 8px;
+      font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; border: none; font-family: inherit; transition: all 0.18s;
+    }
+    .ta-sign    { background: var(--card-dark); color: #ffffff; }
+    .ta-sign:hover    { background: var(--gold-dim); }
+    .ta-revoke  { background: #f5e8e5; color: var(--red); border: 1px solid #f0c0b0; }
+    .ta-revoke:hover  { background: #f0d0c8; }
+    .ta-execute { background: #e8f0e8; color: var(--green); border: 1px solid #b0d8b0; }
+    .ta-execute:hover { background: #d8ead8; }
+    .ta-cancel  { background: #fde8e8; color: var(--red); border: 1px solid #f0b0a0; font-weight: 700; }
+    .ta-cancel:hover  { background: #f8d0c8; }
+
+    /* ════════════════════════════════════════
+       SIGNERS PAGE
+    ════════════════════════════════════════ */
+    .signer-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px;
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 10px;
+    }
+    .signer-num {
+      width: 40px; height: 40px;
+      background: #EEF2FF; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--gold); font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+    }
+    .signer-addr { font-family: monospace; font-size: 0.82rem; color: var(--text); word-break: break-all; }
+    .signer-count {
+      margin-left: auto; flex-shrink: 0;
+      background: var(--bg); color: var(--muted);
+      font-size: 0.72rem; font-weight: 600;
+      padding: 4px 10px; border-radius: 999px;
+    }
+    .signer-me {
+      background: var(--gold); color: #ffffff;
+      font-size: 0.7rem; font-weight: 700;
+      padding: 3px 10px; border-radius: 999px; flex-shrink: 0;
+    }
+    .signers-note {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px;
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 18px;
+      line-height: 1.6;
+    }
+
+    /* ════════════════════════════════════════
+       SETTINGS PAGE
+    ════════════════════════════════════════ */
+    .set-section { margin-bottom: 22px; }
+    .set-lbl { font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+    .set-val { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-family: monospace; font-size: 0.82rem; color: var(--text); word-break: break-all; }
+    .log-term { background: #1F2937; border-radius: 10px; padding: 14px; height: 200px; overflow-y: auto; font-size: 0.78rem; font-family: monospace; }
+    .ll.ok   { color: #a8d5a0; } .ll.err  { color: #f0a090; } .ll.info { color: #93C5FD; }
+
+    /* ════════════════════════════════════════
+       MODAL
+    ════════════════════════════════════════ */
+    .modal-bg {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none; align-items: center; justify-content: center; z-index: 200;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--white); border-radius: 20px;
+      padding: 32px; width: 100%; max-width: 460px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.12);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 22px; }
+    .mf { margin-bottom: 14px; }
+    .mf label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+    .mi {
+      width: 100%; background: var(--bg);
+      border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; font-size: 0.875rem;
+      font-family: inherit; color: var(--text); outline: none; transition: border-color 0.2s;
+    }
+    .mi:focus { border-color: var(--gold); }
+
+    /* Signer list in modal */
+    .signer-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+    }
+    .signer-row .mi { flex: 1; }
+    .signer-del {
+      width: 34px; height: 34px; flex-shrink: 0;
+      background: #f5e8e5; color: var(--red);
+      border: 1px solid #f0c0b0; border-radius: 8px;
+      font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .signer-del:hover { background: #f0d0c8; }
+    .add-signer-btn {
+      width: 100%; padding: 9px;
+      background: var(--bg); border: 1.5px dashed var(--border);
+      border-radius: 10px; color: var(--muted);
+      font-size: 0.82rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: border-color 0.2s, color 0.2s;
+    }
+    .add-signer-btn:hover { border-color: var(--gold); color: var(--gold-dim); }
+
+    .modal-btns { display: flex; gap: 10px; margin-top: 22px; }
+    .m-cancel {
+      flex: 1; padding: 12px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 10px;
+      font-size: 0.875rem; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--muted);
+    }
+    .m-submit {
+      flex: 2; padding: 12px; background: var(--card-dark);
+      color: #ffffff; border: none; border-radius: 10px;
+      font-size: 0.875rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.2s;
+    }
+    .m-submit:hover { background: var(--gold-dim); }
+
+    .empty-st { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 0.875rem; }
+    .empty-st .ei { font-size: 2rem; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     HOME SCREEN
+══════════════════════════════════════════ -->
+<div id="homeScreen">
+  <div class="home-box">
+    <div class="home-logo-icon">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+        <path d="M15 3L27 10V20L15 27L3 20V10L15 3Z" fill="rgba(255,255,255,0.25)" stroke="#ffffff" stroke-width="1.5"/>
+        <path d="M15 9L21 13V19L15 23L9 19V13L15 9Z" fill="#ffffff"/>
+      </svg>
+    </div>
+    <h1>Multi-sig Wallet</h1>
+    <p>이더리움 다중 서명 지갑</p>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <button id="homeConnectBtn" class="home-connect-btn" onclick="connectWallet()">
+        🦊 &nbsp;MetaMask 연결
+      </button>
+      <div id="homeContractSection">
+        <div class="home-badge" id="homeBadge"></div>
+        <input id="homeAddr" class="home-input" type="text" placeholder="컨트랙트 주소 (0x...)" />
+        <button class="home-load-btn" onclick="loadContract()">대시보드 열기 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     DASHBOARD SCREEN
+══════════════════════════════════════════ -->
+<div id="dashScreen">
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sb-logo">
+        <div class="sb-logo-icon">
+          <svg width="22" height="22" viewBox="0 0 30 30" fill="none">
+            <path d="M15 3L27 10V20L15 27L3 20V10L15 3Z" fill="rgba(255,255,255,0.25)" stroke="#ffffff" stroke-width="1.5"/>
+            <path d="M15 9L21 13V19L15 23L9 19V13L15 9Z" fill="#ffffff"/>
+          </svg>
+        </div>
+        <div class="sb-logo-text">
+          <b>Multi-sig</b>
+          <span>Wallet</span>
+        </div>
+      </div>
+
+      <div class="sb-nav">
+        <button class="nav-btn active" onclick="navigate('dashboard')" id="nav-dashboard">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          대시보드
+        </button>
+        <button class="nav-btn" onclick="navigate('transactions')" id="nav-transactions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 16L3 12l4-4M17 8l4 4-4 4"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+          트랜잭션
+        </button>
+        <button class="nav-btn" onclick="navigate('signers')" id="nav-signers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          서명자
+        </button>
+        <button class="nav-btn" onclick="navigate('settings')" id="nav-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          설정
+        </button>
+      </div>
+    </nav>
+
+    <!-- App body -->
+    <div class="app-body">
+      <!-- Topbar -->
+      <div class="topbar">
+        <div class="topbar-title" id="pageTitle">대시보드</div>
+        <div class="topbar-right">
+          <div class="account-pill" onclick="connectWallet()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M16 12h.01"/></svg>
+            <span id="topbarAddr">—</span>
+            <span style="color:#ccc;font-size:0.75rem">▾</span>
+          </div>
+          <div class="net-badge">
+            <div class="net-dot"></div>
+            Sepolia 테스트넷
+          </div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content-area">
+        <div class="page-content">
+
+          <!-- Dashboard -->
+          <div id="pageDashboard">
+            <div class="overview-card">
+              <div class="ov-label">지갑 현황</div>
+              <div class="ov-balance"><span id="dashBal">0.0000</span><small>ETH</small></div>
+              <div class="ov-btns">
+                <button class="ov-btn" onclick="openModal('deposit')">입금</button>
+                <button class="ov-btn owner-only" onclick="openModal('newTx')">새 트랜잭션</button>
+              </div>
+            </div>
+            <div class="stat-row">
+              <div class="stat-card">
+                <div class="stat-lbl">총 트랜잭션 수</div>
+                <div class="stat-val" id="dashTotal">—</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-lbl">대기 중인 트랜잭션</div>
+                <div class="stat-val" id="dashPending">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transactions -->
+          <div id="pageTransactions" style="display:none">
+            <div class="ph">
+              <h3>트랜잭션 목록</h3>
+              <button class="ph-btn owner-only" onclick="openModal('newTx')">+ 새 트랜잭션</button>
+            </div>
+            <div id="txContainer">
+              <div class="empty-st"><div class="ei">📭</div>트랜잭션이 없습니다</div>
+            </div>
+          </div>
+
+          <!-- Signers -->
+          <div id="pageSigners" style="display:none">
+            <div class="ph"><h3>트랜잭션별 서명자 현황</h3></div>
+            <div class="signers-note">
+              이 지갑은 <strong>트랜잭션별 서명자 지정 방식</strong>을 사용합니다.<br>
+              트랜잭션을 제출할 때 서명자 주소와 최소 서명 수를 직접 지정합니다.<br>
+              아래 목록은 현재 컨트랙트의 모든 트랜잭션에 등록된 서명자를 집계한 것입니다.
+            </div>
+            <div id="signerContainer">
+              <div class="empty-st"><div class="ei">👥</div>불러오는 중...</div>
+            </div>
+          </div>
+
+          <!-- Settings -->
+          <div id="pageSettings" style="display:none">
+            <div class="set-section">
+              <div class="set-lbl">컨트랙트 주소</div>
+              <div class="set-val" id="setAddr">—</div>
+            </div>
+            <div class="set-section">
+              <div class="set-lbl">내 주소</div>
+              <div class="set-val" id="setMy">—</div>
+            </div>
+            <div class="set-section">
+              <div class="set-lbl">활동 로그</div>
+              <div class="log-term" id="logBox"></div>
+            </div>
+          </div>
+
+        </div><!-- /page-content -->
+
+        <!-- Right panel -->
+        <div class="right-panel">
+          <h3>최근 활동</h3>
+          <div id="actFeed"><div class="act-empty">아직 활동이 없습니다</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Deposit ══════════════════════════════════════ -->
+<div class="modal-bg" id="mDeposit">
+  <div class="modal">
+    <h2>💰 ETH 입금</h2>
+    <div class="mf">
+      <label>입금 금액 (ETH)</label>
+      <input class="mi" id="depVal" type="number" min="0" step="0.01" placeholder="0.5" />
+    </div>
+    <div class="modal-btns">
+      <button class="m-cancel" onclick="closeModal('deposit')">취소</button>
+      <button class="m-submit" onclick="depositEth()">입금하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: New Transaction ══════════════════════════════ -->
+<div class="modal-bg" id="mNewTx">
+  <div class="modal">
+    <h2>💸 새 트랜잭션 제출</h2>
+    <div class="mf">
+      <label>받는 주소</label>
+      <input class="mi" id="subTo" type="text" placeholder="0x..." />
+    </div>
+    <div class="mf">
+      <label>금액 (ETH)</label>
+      <input class="mi" id="subVal" type="number" min="0" step="0.001" placeholder="0.1" />
+    </div>
+    <div class="mf">
+      <label>서명자 주소 목록</label>
+      <div id="signerInputs">
+        <div class="signer-row">
+          <input class="mi signer-addr-input" type="text" placeholder="0x..." />
+        </div>
+      </div>
+      <button class="add-signer-btn" onclick="addSignerInput()">+ 서명자 추가</button>
+    </div>
+    <div class="mf">
+      <label>최소 서명 수</label>
+      <input class="mi" id="subRequired" type="number" min="1" step="1" placeholder="예: 2" />
+    </div>
+    <div class="modal-btns">
+      <button class="m-cancel" onclick="closeModal('newTx')">취소</button>
+      <button class="m-submit" onclick="submitTransaction()">제출하기</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<script>
+const ABI = [
+  "event Deposit(address indexed sender, uint amount, uint balance)",
+  "event TransactionSubmitted(uint indexed txId, address indexed submitter, address indexed to, uint value)",
+  "event TransactionConfirmed(uint indexed txId, address indexed signer)",
+  "event ConfirmationRevoked(uint indexed txId, address indexed signer)",
+  "event TransactionExecuted(uint indexed txId)",
+  "event TransactionCancelled(uint indexed txId, address indexed submitter)",
+  "function isOwner(address) view returns (bool)",
+  "function getOwners() view returns (address[])",
+  "function isAllowedSigner(uint, address) view returns (bool)",
+  "function isConfirmed(uint, address) view returns (bool)",
+  "function getTransactionCount() view returns (uint)",
+  "function getTransaction(uint) view returns (address to, uint value, bool executed, bool cancelled, uint confirmCount, uint required, address[] allowedSigners, address submitter)",
+  "function getConfirmations(uint) view returns (address[])",
+  "function submitTransaction(address, uint, address[], uint) returns (uint)",
+  "function confirmTransaction(uint)",
+  "function revokeConfirmation(uint)",
+  "function executeTransaction(uint)",
+  "function cancelTransaction(uint)",
+];
+
+let provider, signer, contract, myAddress, amIOwner = false;
+let activities = [];
+let connectedBlock = 0;
+
+// ─── 로그 ───────────────────────────────────────────────────
+function log(msg, type = "info") {
+  const box = document.getElementById("logBox");
+  if (!box) return;
+  const d = document.createElement("div");
+  d.className = `ll ${type}`;
+  d.textContent = `[${new Date().toLocaleTimeString("ko-KR")}] ${msg}`;
+  box.prepend(d);
+}
+
+// ─── 최근 활동 ──────────────────────────────────────────────
+function pushActivity(name, status) {
+  activities.unshift({ name, status });
+  if (activities.length > 8) activities.pop();
+  const STATUS_KO = { Pending:'대기 중', Executed:'실행됨', Confirmed:'서명됨', Revoked:'취소됨' };
+  const feed = document.getElementById("actFeed");
+  feed.innerHTML = activities.map(a =>
+    `<div class="act-item"><span class="act-name">${a.name}</span><span class="act-status ${a.status}">${STATUS_KO[a.status]||a.status}</span></div>`
+  ).join("") || '<div class="act-empty">아직 활동이 없습니다</div>';
+}
+
+// ─── Owner UI 갱신 ──────────────────────────────────────────
+function updateOwnerUI() {
+  document.querySelectorAll(".owner-only").forEach(el => {
+    el.style.display = amIOwner ? "" : "none";
+  });
+}
+
+// ─── 모달 ───────────────────────────────────────────────────
+function openModal(k)  {
+  if (k === 'newTx') {
+    if (!amIOwner) { alert("Owner만 트랜잭션을 제출할 수 있습니다."); return; }
+    resetSignerInputs();
+  }
+  document.getElementById(k==='deposit'?'mDeposit':'mNewTx').classList.add('open');
+}
+function closeModal(k) { document.getElementById(k==='deposit'?'mDeposit':'mNewTx').classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(el =>
+  el.addEventListener('click', e => { if (e.target===el) el.classList.remove('open'); })
+);
+
+// ─── 서명자 입력 동적 관리 ──────────────────────────────────
+function resetSignerInputs() {
+  const box = document.getElementById("signerInputs");
+  box.innerHTML = `<div class="signer-row"><input class="mi signer-addr-input" type="text" placeholder="0x..." /></div>`;
+}
+
+function addSignerInput() {
+  const box = document.getElementById("signerInputs");
+  const row = document.createElement("div");
+  row.className = "signer-row";
+  row.innerHTML = `
+    <input class="mi signer-addr-input" type="text" placeholder="0x..." />
+    <button class="signer-del" onclick="this.parentElement.remove()" title="삭제">✕</button>
+  `;
+  box.appendChild(row);
+}
+
+// ─── 페이지 전환 ────────────────────────────────────────────
+const PAGES = ['dashboard','transactions','signers','settings'];
+const TITLES = { dashboard:'대시보드', transactions:'트랜잭션', signers:'서명자', settings:'설정' };
+
+function navigate(p) {
+  PAGES.forEach(x => {
+    document.getElementById(`page${x[0].toUpperCase()+x.slice(1)}`).style.display = x===p?'block':'none';
+    document.getElementById(`nav-${x}`).classList.toggle('active', x===p);
+  });
+  document.getElementById('pageTitle').textContent = TITLES[p];
+  if (p==='transactions') loadTransactions();
+  if (p==='signers')      loadSigners();
+}
+
+// ─── MetaMask 연결 ──────────────────────────────────────────
+async function connectWallet() {
+  if (!window.ethereum) { alert("MetaMask를 설치해 주세요."); return; }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("wallet_requestPermissions", [{ eth_accounts: {} }]);
+    await provider.send("eth_requestAccounts", []);
+    signer     = await provider.getSigner();
+    myAddress  = await signer.getAddress();
+    const short = myAddress.slice(0,6)+"..."+myAddress.slice(-4);
+
+    const btn = document.getElementById("homeConnectBtn");
+    btn.textContent = "✅  " + short;
+    btn.classList.add("connected");
+    document.getElementById("homeBadge").textContent = myAddress;
+    document.getElementById("homeContractSection").classList.add("show");
+    document.getElementById("topbarAddr").textContent = short;
+
+    window.ethereum.on("accountsChanged", ()=>location.reload());
+    window.ethereum.on("chainChanged",    ()=>location.reload());
+
+    if (contract) {
+      contract = new ethers.Contract(await contract.getAddress(), ABI, signer);
+      await refreshDash();
+    }
+  } catch(e) { log("연결 실패: "+e.message,"err"); }
+}
+
+// ─── 컨트랙트 불러오기 ──────────────────────────────────────
+async function loadContract() {
+  if (!signer) { alert("먼저 MetaMask를 연결하세요."); return; }
+  const addr = document.getElementById("homeAddr").value.trim();
+  if (!ethers.isAddress(addr)) { alert("올바른 컨트랙트 주소를 입력하세요."); return; }
+  try {
+    contract = new ethers.Contract(addr, ABI, signer);
+    amIOwner = await contract.isOwner(myAddress);
+    document.getElementById("homeScreen").style.display = "none";
+    document.getElementById("dashScreen").style.display  = "block";
+    document.getElementById("setAddr").textContent = addr;
+    document.getElementById("setMy").textContent   = myAddress;
+    updateOwnerUI();
+    connectedBlock = await provider.getBlockNumber();
+    await refreshDash();
+    subscribeEvents();
+    log("컨트랙트 연결: "+addr+(amIOwner?" (Owner)":""),"info");
+  } catch(e) { alert("불러오기 실패: "+e.message); }
+}
+
+// ─── 대시보드 갱신 ──────────────────────────────────────────
+async function refreshDash() {
+  try {
+    const [bal, cnt] = await Promise.all([
+      provider.getBalance(await contract.getAddress()),
+      contract.getTransactionCount(),
+    ]);
+    document.getElementById("dashBal").textContent   = parseFloat(ethers.formatEther(bal)).toFixed(4);
+    document.getElementById("dashTotal").textContent = Number(cnt);
+
+    let pending = 0;
+    for (let i = 0; i < Number(cnt); i++) {
+      const t = await contract.getTransaction(i);
+      if (!t.executed) pending++;
+    }
+    document.getElementById("dashPending").textContent = pending;
+  } catch(e) { log("대시보드 갱신 실패: "+e.message,"err"); }
+}
+
+// ─── 트랜잭션 목록 ──────────────────────────────────────────
+async function loadTransactions() {
+  if (!contract) return;
+  const box = document.getElementById("txContainer");
+  try {
+    const cnt = await contract.getTransactionCount();
+    const n = Number(cnt);
+    if (n === 0) { box.innerHTML='<div class="empty-st"><div class="ei">📭</div>트랜잭션이 없습니다</div>'; return; }
+    box.innerHTML = "";
+    for (let i = n-1; i >= 0; i--) {
+      const t = await contract.getTransaction(i);
+      const { to, value, executed, cancelled, confirmCount, required, allowedSigners, submitter } = t;
+      const cc  = Number(confirmCount);
+      const req = Number(required);
+      const pct = Math.min(100, Math.round(cc/req*100));
+      const isAllowed   = allowedSigners.some(a => a.toLowerCase() === myAddress?.toLowerCase());
+      const isSubmitter = submitter.toLowerCase() === myAddress?.toLowerCase();
+      const isSigned    = isAllowed && myAddress ? await contract.isConfirmed(i, myAddress) : false;
+      const isPending   = !executed && !cancelled;
+      const cardCls  = executed ? "tx-card done" : cancelled ? "tx-card cancelled" : "tx-card";
+      const badgeCls = executed ? "executed" : cancelled ? "cancelled" : "pending";
+      const badgeTxt = executed ? "✅ 실행됨" : cancelled ? "🚫 취소됨" : "⏳ 대기 중";
+      const card = document.createElement("div");
+      card.className = cardCls;
+      card.innerHTML = `
+        <div class="tx-top">
+          <span class="tx-id-lbl">TX #${i}</span>
+          <span class="tx-badge ${badgeCls}">${badgeTxt}</span>
+        </div>
+        <div class="tx-mid">
+          <div><div class="tx-to-lbl">수신 주소</div><div class="tx-to">${to.slice(0,10)}...${to.slice(-8)}</div></div>
+          <div class="tx-amt">${parseFloat(ethers.formatEther(value)).toFixed(4)} ETH</div>
+        </div>
+        <div class="tx-signers-info">
+          서명자 ${allowedSigners.length}명 지정 · 최소 서명 수 ${req}명
+          ${isAllowed   ? ' · <strong style="color:var(--gold-dim)">내가 서명자</strong>' : ''}
+          ${isSubmitter ? ' · <strong style="color:var(--muted)">내가 제출자</strong>' : ''}
+        </div>
+        <div class="tx-prog-labels"><span>서명 현황</span><span>${cc} / ${req}</span></div>
+        <div class="tx-prog-bar"><div class="tx-prog-fill${executed?' done':''}" style="width:${pct}%"></div></div>
+        ${isPending?`<div class="tx-actions">
+          ${isAllowed && !isSigned ?`<button class="ta-btn ta-sign"    onclick="confirmTx(${i})">✅ 서명</button>`:''}
+          ${isAllowed &&  isSigned ?`<button class="ta-btn ta-revoke"  onclick="revokeTx(${i})">↩ 서명취소</button>`:''}
+          <button class="ta-btn ta-execute" onclick="executeTx(${i})">▶ 실행</button>
+          ${isSubmitter ?`<button class="ta-btn ta-cancel"  onclick="cancelTx(${i})">🚫 트랜잭션 취소</button>`:''}
+        </div>`:""}
+      `;
+      box.appendChild(card);
+    }
+  } catch(e) { log("목록 오류: "+e.message,"err"); }
+}
+
+// ─── 서명자 집계 페이지 ──────────────────────────────────────
+async function loadSigners() {
+  if (!contract) return;
+  const box = document.getElementById("signerContainer");
+  try {
+    const cnt = await contract.getTransactionCount();
+    const n = Number(cnt);
+    if (n === 0) { box.innerHTML='<div class="empty-st"><div class="ei">👥</div>트랜잭션이 없습니다</div>'; return; }
+
+    // 각 트랜잭션의 allowedSigners를 집계
+    const countMap = {};
+    for (let i = 0; i < n; i++) {
+      const t = await contract.getTransaction(i);
+      t.allowedSigners.forEach(addr => {
+        const key = addr.toLowerCase();
+        countMap[key] = { addr, count: (countMap[key]?.count || 0) + 1 };
+      });
+    }
+
+    const entries = Object.values(countMap).sort((a,b) => b.count - a.count);
+    if (entries.length === 0) { box.innerHTML='<div class="empty-st"><div class="ei">👥</div>서명자가 없습니다</div>'; return; }
+
+    box.innerHTML = "";
+    entries.forEach((e, i) => {
+      const isMe = e.addr.toLowerCase() === myAddress?.toLowerCase();
+      const card = document.createElement("div");
+      card.className = "signer-card";
+      card.innerHTML = `
+        <div class="signer-num">${i+1}</div>
+        <div class="signer-addr">${e.addr}</div>
+        <span class="signer-count">${e.count}개 트랜잭션</span>
+        ${isMe?'<span class="signer-me">나</span>':""}
+      `;
+      box.appendChild(card);
+    });
+  } catch(e) { log("서명자 오류: "+e.message,"err"); }
+}
+
+// ─── submitTransaction ───────────────────────────────────────
+async function submitTransaction() {
+  const to  = document.getElementById("subTo").value.trim();
+  const val = document.getElementById("subVal").value.trim();
+  const req = parseInt(document.getElementById("subRequired").value.trim(), 10);
+
+  const signerAddrs = Array.from(document.querySelectorAll(".signer-addr-input"))
+    .map(el => el.value.trim())
+    .filter(a => a.length > 0);
+
+  if (!ethers.isAddress(to))         { alert("올바른 수신 주소를 입력하세요."); return; }
+  if (!val || isNaN(Number(val)))    { alert("금액을 입력하세요."); return; }
+  if (signerAddrs.length === 0)      { alert("서명자 주소를 하나 이상 입력하세요."); return; }
+  for (const a of signerAddrs) {
+    if (!ethers.isAddress(a)) { alert(`올바르지 않은 서명자 주소: ${a}`); return; }
+  }
+  if (isNaN(req) || req < 1 || req > signerAddrs.length) {
+    alert(`최소 서명 수는 1 이상 서명자 수(${signerAddrs.length}) 이하여야 합니다.`); return;
+  }
+
+  try {
+    closeModal('newTx');
+    log(`트랜잭션 제출 중... (${val} ETH, 서명자 ${signerAddrs.length}명, required ${req})`);
+    const tx = await contract.submitTransaction(to, ethers.parseEther(val), signerAddrs, req);
+    await tx.wait();
+    log("제출 완료","ok");
+    await refreshDash();
+    if (document.getElementById("pageTransactions").style.display!=="none") loadTransactions();
+  } catch(e) { log("제출 실패: "+(e.reason||e.message),"err"); }
+}
+
+// ─── confirmTransaction ──────────────────────────────────────
+async function confirmTx(id) {
+  try {
+    log(`TX #${id} 서명 중...`);
+    const tx = await contract.confirmTransaction(id);
+    await tx.wait();
+    log(`TX #${id} 서명 완료`,"ok");
+    await refreshDash(); loadTransactions();
+  } catch(e) { log("서명 실패: "+(e.reason||e.message),"err"); }
+}
+
+// ─── revokeConfirmation ──────────────────────────────────────
+async function revokeTx(id) {
+  try {
+    log(`TX #${id} 서명 취소 중...`);
+    const tx = await contract.revokeConfirmation(id);
+    await tx.wait();
+    log(`TX #${id} 취소 완료`,"ok");
+    loadTransactions();
+  } catch(e) { log("취소 실패: "+(e.reason||e.message),"err"); }
+}
+
+// ─── cancelTransaction ───────────────────────────────────────
+async function cancelTx(id) {
+  try {
+    log(`TX #${id} 취소 중...`);
+    const tx = await contract.cancelTransaction(id);
+    await tx.wait();
+    log(`TX #${id} 취소 완료`,"ok");
+    await refreshDash(); loadTransactions();
+  } catch(e) { log("취소 실패: "+(e.reason||e.message),"err"); }
+}
+
+// ─── executeTransaction ──────────────────────────────────────
+async function executeTx(id) {
+  try {
+    log(`TX #${id} 실행 중...`);
+    const tx = await contract.executeTransaction(id);
+    await tx.wait();
+    log(`TX #${id} 실행 완료`,"ok");
+    await refreshDash(); loadTransactions();
+  } catch(e) { log("실행 실패: "+(e.reason||e.message),"err"); }
+}
+
+// ─── depositEth ─────────────────────────────────────────────
+async function depositEth() {
+  const val = document.getElementById("depVal").value.trim();
+  if (!val||isNaN(Number(val))) { alert("금액을 입력하세요."); return; }
+  try {
+    closeModal('deposit');
+    log(`${val} ETH 입금 중...`);
+    const tx = await signer.sendTransaction({ to: await contract.getAddress(), value: ethers.parseEther(val) });
+    await tx.wait();
+    log(`${val} ETH 입금 완료`,"ok");
+    await refreshDash();
+  } catch(e) { log("입금 실패: "+(e.reason||e.message),"err"); }
+}
+
+// ─── 이벤트 구독 ────────────────────────────────────────────
+function subscribeEvents() {
+  contract.removeAllListeners();
+  const seen = new Set();
+
+  function guard(ev, fn) {
+    if (ev?.log?.blockNumber <= connectedBlock) return;
+    const key = (ev?.log?.transactionHash ?? '') + '-' + (ev?.log?.index ?? Math.random());
+    if (seen.has(key)) return;
+    seen.add(key);
+    fn();
+  }
+
+  const reload = () => {
+    refreshDash();
+    if(document.getElementById("pageTransactions").style.display!=="none") loadTransactions();
+    if(document.getElementById("pageSigners").style.display!=="none") loadSigners();
+  };
+  contract.on("TransactionSubmitted", (...a) => guard(a.at(-1), () => { pushActivity("ETH 전송","Pending"); reload(); }));
+  contract.on("TransactionConfirmed", (...a) => guard(a.at(-1), () => { pushActivity("트랜잭션 서명","Confirmed"); reload(); }));
+  contract.on("ConfirmationRevoked",  (...a) => guard(a.at(-1), () => { pushActivity("서명 취소","Revoked"); reload(); }));
+  contract.on("TransactionExecuted",  (...a) => guard(a.at(-1), () => { pushActivity("트랜잭션 실행","Executed"); reload(); }));
+  contract.on("TransactionCancelled", (...a) => guard(a.at(-1), () => { pushActivity("트랜잭션 취소","Revoked"); reload(); }));
+  contract.on("Deposit",              (...a) => guard(a.at(-1), () => { pushActivity("ETH 입금","Executed"); refreshDash(); }));
+}
+</script>
+</body>
+</html>
